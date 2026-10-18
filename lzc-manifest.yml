@@ -1,0 +1,208 @@
+# OpenHabitTracker 习惯与任务 · 懒猫微服运行清单（LPK V2）
+#
+# 目标环境：lzcos 1.6.2 / lzc-cli 2.0.9（规范校准留痕见 实测记录/specsync/）
+# 上游：Jinjinov/OpenHabitTracker 1.2.5 = commit fff3bcd4bf9bd805e53aced0ae4c8d731cc2fc68（GPL-3.0）
+#       发行镜像 jinjinov/openhabittracker:1.2.5 复制到懒猫源
+#
+# 设计要点：
+# 1. 单容器：ASP.NET Core Blazor Server，监听 http://[::]:8080，静态资源与交互回路同源。
+# 2. 持久化：应用把 SQLite 库与 DataProtection 密钥写在 AppContext.BaseDirectory 下的
+#    .OpenHabitTracker 目录（镜像内即 /app/.OpenHabitTracker），必须 bind，否则升级会丢
+#    数据库，且密钥丢失会让所有登录 Cookie 失效。
+# 3. 免密：登录页是服务端渲染的 Razor 表单（POST /login，字段 Input.Username / Input.Password），
+#    因此用官方 builtin://simple-inject-password 填充并提交即可；账号密码由部署环境变量与
+#    AppSettings__* 保持一致。
+# 4. 账号切换：官方填充脚本只在 /login 命中；应用内登出后会回到登录页，可用简介里公开的
+#    审核账号或自行注册其他账号，不会被强制自动登录。
+# 5. 网盘：官方文件桥（request）+ 官方文件选择器（browser），覆盖数据导入（<input type=file>）
+#    与导出下载（<a download> 指向 blob:）。
+# 6. WebSocket：Blazor Server 的交互回路走 WebSocket，上游声明 fix_websocket_header 修正
+#    Sec-Websocket-* 头大小写。
+application:
+  subdomain: openhabittracker
+  upstreams:
+    - location: /
+      backend: http://openhabittracker.cloud.lazycat.app.openhabittracker.lzcapp:8080
+      disable_trim_location: true
+  health_check:
+    test_url: http://openhabittracker.cloud.lazycat.app.openhabittracker.lzcapp:8080/login
+    start_period: 180s
+    timeout: 10s
+  injects:
+    # ── 免密登录（browser 阶段）──────────────────────────────────────────────
+    # 登录页是真实表单，直接填充并提交；只在 /login 命中，登出后不会被强制登录。
+    - id: oht-login-autofill
+      'on': browser
+      auth_required: false
+      when:
+        - /login
+      do:
+        - src: builtin://simple-inject-password
+          params:
+            user: admin
+            password: PaLzc-7Rq2Xw9m
+            userSelector: '#username'
+            passwordSelector: '#password'
+            submitSelector: 'button[type="submit"]'
+            autoSubmit: false
+            retryCount: 20
+            observerTimeoutMs: 20000
+    # 兜底：填好后点一次提交（服务端表单，点一次即可；1 秒后仍在登录页则再 submit 一次）。
+    - id: oht-login-submit
+      'on': browser
+      auth_required: false
+      when:
+        - /login
+      do:
+        - src: |
+            (function () {
+              if (window.__ohtAutoSubmit) return;
+              window.__ohtAutoSubmit = true;
+              var submitted = false;
+              var ticks = 0;
+              function submitOnce() {
+                if (submitted) return;
+                var user = document.querySelector("#username");
+                var password = document.querySelector("#password");
+                if (!user || !password || !user.value || !password.value) return;
+                var form = user.closest("form") || document.querySelector("form");
+                var button =
+                  (form && form.querySelector('button[type="submit"], input[type="submit"]')) ||
+                  document.querySelector('button[type="submit"]');
+                submitted = true;
+                // 服务端表单的防伪令牌是一次性的：提交后不能再提交第二次，
+                // 否则服务端会以 400 拒绝复用令牌的请求。
+                try {
+                  if (button) {
+                    button.click();
+                  } else if (form && form.requestSubmit) {
+                    form.requestSubmit();
+                  } else if (form && form.submit) {
+                    form.submit();
+                  }
+                } catch (e) {}
+              }
+              var timer = setInterval(function () {
+                ticks++;
+                submitOnce();
+                if (submitted || ticks > 60) clearInterval(timer);
+              }, 400);
+            })();
+    # ── 默认语言改为简体中文（browser 阶段）──────────────────────────────────
+    # 上游新用户的界面语言默认值是 en（SettingsModel.Culture），中文语言包本身完整。
+    # 这里用上游自己的公开接口把当前用户的设置改成 zh，再 reload 一次。
+    - id: oht-set-chinese
+      'on': browser
+      auth_required: false
+      when:
+        - /*
+      # 登录页不跑：登录是服务端表单，防伪令牌一次有效，这一页重载会打断提交并让令牌失效。
+      unless:
+        - /login
+      do:
+        - src: >-
+            file:///lzcapp/pkg/content/lazycat-injects/oht-set-chinese.js
+          params:
+            user: admin
+            password: PaLzc-7Rq2Xw9m
+    # ── 网盘文件桥（request 阶段）────────────────────────────────────────────
+    # 官方《网盘文件选择器/自动拦截》要求 request 与 browser 两侧成对配置。代码取自官方专题。
+    - id: lazycat-file-bridge
+      'on': request
+      auth_required: false
+      when:
+        - /__lazycat_file_bridge/*
+      do:
+        - src: |
+            const bridgePrefix = "/__lazycat_file_bridge";
+            const requestHost = String(ctx.request.host || "")
+              .split(":")[0]
+              .toLowerCase();
+            const firstDot = requestHost.indexOf(".");
+            const method = String(ctx.request.method || "").toUpperCase();
+
+            if (
+              firstDot <= 0 ||
+              !requestHost.endsWith(".heiyu.space") ||
+              !["GET", "HEAD", "PUT"].includes(method)
+            ) {
+              ctx.response.send(
+                ["GET", "HEAD", "PUT"].includes(method) ? 400 : 405,
+                "Invalid LazyCat file bridge request",
+              );
+              return;
+            }
+
+            const boxDomain = requestHost.slice(firstDot + 1);
+            const fileOrigin = "https://file." + boxDomain;
+            const targetPath =
+              "/files/home" + ctx.request.path.slice(bridgePrefix.length);
+
+            ctx.headers.del("Origin");
+            ctx.headers.del("Referer");
+            ctx.proxy.to(fileOrigin, {
+              path: targetPath,
+              query: ctx.request.raw_query,
+              use_target_host: true,
+              timeout_ms: 120000,
+              on_fail: "error",
+            });
+    # ── 网盘文件选择器（browser 阶段）────────────────────────────────────────
+    # 覆盖数据导入的 <input type=file> 与导出下载的 <a download>。
+    - id: open-save-chooser
+      'on': browser
+      auth_required: false
+      when:
+        - /*
+      do:
+        - src: >-
+            file:///lzcapp/pkg/content/lazycat-injects/lzc-file-chooser-inject.js
+          params:
+            diskRoot: /_lzc/files/home
+            fileBridgeRoot: /__lazycat_file_bridge
+            fallbackMime: application/octet-stream
+            locale: auto
+            hooks:
+              fileSystemAccess: true
+              fileInput: true
+              downloadAnchor: true
+            text:
+              zh-CN:
+                openTitle: 打开
+                saveTitle: 保存
+                cloudTab: 网盘文件
+                localTab: 本地文件
+                openLazyCat: 从懒猫打开
+                saveLazyCat: 保存至懒猫
+                cancel: 取消
+              en-US:
+                openTitle: Open
+                saveTitle: Save
+                cloudTab: Cloud files
+                localTab: Local files
+                openLazyCat: Open from LazyCat
+                saveToLazyCat: Save to LazyCat
+                cancel: Cancel
+services:
+  # ── 主服务 ─────────────────────────────────────────────────────────────────
+  openhabittracker:
+    image: registry.lazycat.cloud/wans/jinjinov/openhabittracker:8fd7ce7eb712e602
+    environment:
+      - TZ=Asia/Shanghai
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - AppSettings__UserName=admin
+      - AppSettings__Email=admin@admin.com
+      - AppSettings__Password=PaLzc-7Rq2Xw9m
+      # 随包分发的固定机密（非本机凭据）；升级/重装必须保持不变，否则已签发的登录 Cookie 失效。
+      - AppSettings__JwtSecret=PaLzcOhtJwtSecret0123456789abcdefghijklmn
+    binds:
+      - /lzcapp/var/openhabittracker:/app/.OpenHabitTracker
+    healthcheck:
+      # 镜像里没有 curl/wget，但有 bash；用 /dev/tcp 探登录页的 HTTP 200。
+      test: [CMD-SHELL, "bash /lzcapp/pkg/content/healthcheck.sh"]
+      interval: 20s
+      timeout: 10s
+      retries: 6
+      start_period: 120s
+

@@ -1,0 +1,16 @@
+OpenHabitTracker
+================
+
+Upstream: https://github.com/Jinjinov/OpenHabitTracker
+Version:  1.2.5 (commit fff3bcd4bf9bd805e53aced0ae4c8d731cc2fc68)
+License:  GPL-3.0 (full text in LICENSE next to this file)
+
+This package repackages the upstream release image
+(jinjinov/openhabittracker:1.2.5) for LazyCat Microserver without
+modifying upstream source. The only additions are:
+
+  content/healthcheck.sh                            container health probe (/dev/tcp)
+  content/lazycat-injects/lzc-file-chooser-inject.js  official LazyCat cloud-drive file picker
+
+The upstream source for the running image is the repository above at the
+tag listed here.

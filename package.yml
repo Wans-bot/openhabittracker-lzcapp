@@ -1,0 +1,80 @@
+package: cloud.lazycat.app.openhabittracker
+version: 1.2.5-8
+name: OpenHabitTracker 习惯与任务
+description: 自托管的习惯、任务与笔记管理：按间隔记录习惯完成度、给任务安排日期与计时、用 Markdown 写笔记，数据存在自己的微服上。
+author: Jinjinov
+license: GPL-3.0
+homepage: https://github.com/Jinjinov/OpenHabitTracker
+min_os_version: 1.5.0
+
+locales:
+  zh-CN:
+    name: OpenHabitTracker 习惯与任务
+    description: 自托管的习惯、任务与笔记管理：按间隔记录习惯完成度、给任务安排日期与计时、用 Markdown 写笔记，数据存在自己的微服上。
+    usage: |
+      OpenHabitTracker 把习惯、任务和笔记放在一起管理：习惯不按「连续打卡」算，而按「逾期比例」
+      算（间隔 10 天的习惯逾期 2 天显示 120%）；任务可以安排日期时间、时长、清单和计时器；
+      笔记支持 Markdown，在列表里直接渲染。
+
+      首次使用：
+
+      1. 打开应用即为简体中文界面并已自动登录（不需要手输账号密码），进入主界面。
+      2. 左侧菜单在笔记、任务、习惯之间切换，右上角可以在列表里直接新建条目。
+      3. 习惯用「间隔天数」定义频率，完成后点一下就记一次；列表里显示逾期比例而不是连击数。
+      4. 任务可以设置计划日期时间、时长与清单，到点前会提醒；页面底部有计时器。
+      5. 数据菜单里可以导入导出 JSON、YAML、TSV 与 Markdown；导出时会弹出统一窗口，
+         可以直接保存到懒猫网盘，也可以保存到本机。
+
+      审核账号（应用自身登录，与微服账号无关；正常使用不需要手输）：
+
+      - 账号：admin
+      - 密码：PaLzc-7Rq2Xw9m
+
+      数据与限制：
+
+      - 习惯、任务、笔记与账号都存在微服的应用数据目录中（SQLite 数据库与加密密钥），
+        重启与升级不丢，升级不改变应用访问地址。
+      - 邮件功能未启用，忘记密码不可用；需要重置时请联系管理员。
+      - 桌面端与移动端浏览器都可用。
+      - 本应用按上游 GPL-3.0 许可分发，完整许可证随包附上；源码地址
+        https://github.com/Jinjinov/OpenHabitTracker
+
+  en-US:
+    name: OpenHabitTracker
+    description: "Self-hosted habits, tasks and notes: track habits by how overdue they are, schedule tasks with dates and timers, and write notes in Markdown, all on your own microserver."
+    usage: |
+      OpenHabitTracker keeps habits, tasks and notes together. A habit is measured by how
+      overdue it is instead of by an unbroken streak (a habit with a 10 day interval that
+      is 2 days overdue reads 120%). Tasks can carry a planned date and time, a duration,
+      a checklist and a timer. Notes are Markdown and render straight in the list.
+
+      Getting started:
+
+      1. The app opens with a Chinese interface and signs you in automatically (no account
+         or password needed), landing on the main view.
+      2. The left menu switches between notes, tasks and habits; new items are added from
+         the list itself.
+      3. A habit is defined by an interval in days and checked off in one tap; the list
+         shows the overdue ratio rather than a streak count.
+      4. Tasks take a planned date and time, a duration and a checklist, and remind you
+         before they are due; there is a timer at the bottom of the page.
+      5. Import and export JSON, YAML, TSV and Markdown from the data menu. Export opens
+         the unified file dialog so you can save straight into a LazyCat cloud-drive folder
+         or to your own device.
+
+      Review account (application-level login, unrelated to your microserver account; you
+      do not need it in normal use):
+
+      - account: admin
+      - password: PaLzc-7Rq2Xw9m
+
+      Data and limits:
+
+      - Habits, tasks, notes and accounts live in the app data directory on your
+        microserver (SQLite database plus the encryption key); restarts and upgrades keep
+        them and the URL stays unchanged.
+      - Email is not enabled, so forgot-password is unavailable; ask an administrator to
+        reset it.
+      - Desktop and mobile browsers both work.
+      - Distributed under the upstream GPL-3.0 license, bundled with this package; source
+        at https://github.com/Jinjinov/OpenHabitTracker
