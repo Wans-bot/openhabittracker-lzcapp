@@ -1,12 +1,11 @@
 package: cloud.lazycat.app.openhabittracker
-version: 1.2.5-8
+version: 1.2.5
 name: OpenHabitTracker 习惯与任务
 description: 自托管的习惯、任务与笔记管理：按间隔记录习惯完成度、给任务安排日期与计时、用 Markdown 写笔记，数据存在自己的微服上。
 author: Jinjinov
 license: GPL-3.0
 homepage: https://github.com/Jinjinov/OpenHabitTracker
 min_os_version: 1.5.0
-
 locales:
   zh-CN:
     name: OpenHabitTracker 习惯与任务
@@ -38,7 +37,6 @@ locales:
       - 桌面端与移动端浏览器都可用。
       - 本应用按上游 GPL-3.0 许可分发，完整许可证随包附上；源码地址
         https://github.com/Jinjinov/OpenHabitTracker
-
   en-US:
     name: OpenHabitTracker
     description: "Self-hosted habits, tasks and notes: track habits by how overdue they are, schedule tasks with dates and timers, and write notes in Markdown, all on your own microserver."

@@ -186,7 +186,8 @@ application:
 services:
   # ── 主服务 ─────────────────────────────────────────────────────────────────
   openhabittracker:
-    image: registry.lazycat.cloud/wans/jinjinov/openhabittracker:8fd7ce7eb712e602
+    # upstream: ghcr.io/jinjinov/openhabittracker:1.2.5
+    image: registry.lazycat.cloud/wans/jinjinov/openhabittracker:ec0ef6a2619aed30
     environment:
       - TZ=Asia/Shanghai
       - ASPNETCORE_ENVIRONMENT=Production
@@ -205,4 +206,3 @@ services:
       timeout: 10s
       retries: 6
       start_period: 120s
-
