@@ -1,5 +1,5 @@
 package: cloud.lazycat.app.openhabittracker
-version: 1.2.5-1
+version: 1.2.5-9
 name: OpenHabitTracker 习惯与任务
 description: 自托管的习惯、任务与笔记管理：按间隔记录习惯完成度、给任务安排日期与计时、用 Markdown 写笔记，数据存在自己的微服上。
 author: Jinjinov
